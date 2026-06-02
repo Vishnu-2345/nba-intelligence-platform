@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+pandas
+numpy
+scikit-learn
+xgboost
+streamlit
+plotly
+nba_api
+apscheduler
+redis
+python-dotenv
