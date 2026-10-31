@@ -137,3 +137,4 @@ def compare_players(
         "player2": p2,
         "category_leaders": leaders
     }
+
