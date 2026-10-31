@@ -28,6 +28,7 @@ page = st.sidebar.radio(
     [
         "Dashboard",
         "🔮 AI Predictions & Props",
+        "⚔️ Head-to-Head Comparison",
         "Leaderboards",
         "Player Stats & Analytics",
         "Player Search",
@@ -198,7 +199,6 @@ elif page == "🔮 AI Predictions & Props":
         st.subheader("⚔️ Game Matchup & Win Probability Simulator")
         st.caption("Simulates game pace, offensive efficiencies, and home court advantage to output projected scores and spread.")
 
-        # Fetch teams list for dropdowns
         try:
             teams_res = requests.get(f"{API_URL}/teams", timeout=5)
             teams_data = teams_res.json() if teams_res.status_code == 200 else []
@@ -221,7 +221,6 @@ elif page == "🔮 AI Predictions & Props":
             home_choice = st.selectbox("🏠 Home Team", list(team_dict.keys()), index=0)
             home_id = team_dict[home_choice]
         with col_away:
-            # Default to second team
             away_choice = st.selectbox("✈️ Away Team", list(team_dict.keys()), index=min(1, len(team_dict)-1))
             away_id = team_dict[away_choice]
 
@@ -256,7 +255,6 @@ elif page == "🔮 AI Predictions & Props":
                             st.metric("Win Probability", f"{away_info['win_probability']}%")
                             st.metric("Projected Score", away_info['projected_score'])
 
-                        # Win probability split bar
                         st.markdown("#### Win Probability Split")
                         prob_df = pd.DataFrame({
                             "Team": [home_info['abbreviation'], away_info['abbreviation']],
@@ -284,7 +282,150 @@ elif page == "🔮 AI Predictions & Props":
                     st.error(f"Failed to run matchup simulation: {e}")
 
 # ==================================
-# View 3: Leaderboards
+# View 3: Player Head-to-Head Comparison
+# ==================================
+
+elif page == "⚔️ Head-to-Head Comparison":
+    st.title("⚔️ Player Head-to-Head Comparison")
+    st.markdown("Compare two NBA stars side-by-side across scoring, playmaking, rebounding, defense, and shooting efficiency.")
+
+    col_select1, col_select2 = st.columns(2)
+    with col_select1:
+        p1_name = st.selectbox("Select Player A", list(PRESET_PLAYERS.keys()), index=0, key="cmp_p1")
+        p1_id = PRESET_PLAYERS[p1_name]
+    with col_select2:
+        p2_name = st.selectbox("Select Player B", list(PRESET_PLAYERS.keys()), index=1, key="cmp_p2")
+        p2_id = PRESET_PLAYERS[p2_name]
+
+    if st.button("Compare Players", type="primary", key="btn_compare"):
+        if p1_id == p2_id:
+            st.warning("Please choose two different players to compare.")
+        else:
+            try:
+                cmp_res = requests.get(f"{API_URL}/compare?player1_id={p1_id}&player2_id={p2_id}", timeout=6)
+                if cmp_res.status_code == 200:
+                    cmp_data = cmp_res.json()
+                    p1 = cmp_data["player1"]
+                    p2 = cmp_data["player2"]
+                    leaders = cmp_data.get("category_leaders", {})
+
+                    # Top Profile Card
+                    col_p1, col_vs, col_p2 = st.columns([3, 1, 3])
+                    with col_p1:
+                        c_img, c_meta = st.columns([1, 2])
+                        with c_img:
+                            if p1.get("headshot_url"):
+                                st.image(p1["headshot_url"], width=130)
+                        with c_meta:
+                            st.header(p1["full_name"])
+                            st.caption(f"Team: **{p1.get('team', 'NBA')}** | Games: **{p1['games_played']}**")
+
+                    with col_vs:
+                        st.markdown("<h2 style='text-align: center; color: gray; margin-top: 30px;'>VS</h2>", unsafe_allow_html=True)
+
+                    with col_p2:
+                        c_img2, c_meta2 = st.columns([1, 2])
+                        with c_img2:
+                            if p2.get("headshot_url"):
+                                st.image(p2["headshot_url"], width=130)
+                        with c_meta2:
+                            st.header(p2["full_name"])
+                            st.caption(f"Team: **{p2.get('team', 'NBA')}** | Games: **{p2['games_played']}**")
+
+                    st.markdown("---")
+
+                    # Dual Overlapping Radar Chart
+                    st.subheader("📊 Skill & Impact Radar Comparison")
+                    radar_metrics = ['Points', 'Rebounds', 'Assists', 'Steals', 'Blocks']
+                    avg1 = p1["averages"]
+                    avg2 = p2["averages"]
+
+                    val1 = [avg1["ppg"], avg1["rpg"], avg1["apg"], avg1["spg"] * 5, avg1["bpg"] * 5]
+                    val2 = [avg2["ppg"], avg2["rpg"], avg2["apg"], avg2["spg"] * 5, avg2["bpg"] * 5]
+
+                    fig_radar = go.Figure()
+                    fig_radar.add_trace(go.Scatterpolar(
+                        r=val1,
+                        theta=radar_metrics,
+                        fill='toself',
+                        name=p1["full_name"],
+                        line_color='#1f77b4',
+                        opacity=0.6
+                    ))
+                    fig_radar.add_trace(go.Scatterpolar(
+                        r=val2,
+                        theta=radar_metrics,
+                        fill='toself',
+                        name=p2["full_name"],
+                        line_color='#ff7f0e',
+                        opacity=0.6
+                    ))
+                    fig_radar.update_layout(
+                        polar=dict(radialaxis=dict(visible=True)),
+                        showlegend=True,
+                        height=450
+                    )
+                    st.plotly_chart(fig_radar, use_container_width=True)
+
+                    # Side-by-side metric comparison table
+                    st.subheader("📋 Statistical Breakdown & Category Leaders")
+
+                    def make_delta(metric_key, v1, v2):
+                        lead_info = leaders.get(metric_key, {})
+                        leader_name = lead_info.get("leader", "")
+                        margin = lead_info.get("margin", 0.0)
+                        if leader_name == p1["full_name"]:
+                            return f"🏆 {p1['full_name']} (+{margin})", ""
+                        elif leader_name == p2["full_name"]:
+                            return "", f"🏆 {p2['full_name']} (+{margin})"
+                        return "Tie", "Tie"
+
+                    stat_rows = [
+                        ("Points Per Game (PPG)", avg1["ppg"], avg2["ppg"], "ppg"),
+                        ("Rebounds Per Game (RPG)", avg1["rpg"], avg2["rpg"], "rpg"),
+                        ("Assists Per Game (APG)", avg1["apg"], avg2["apg"], "apg"),
+                        ("Steals Per Game (SPG)", avg1["spg"], avg2["spg"], "spg"),
+                        ("Blocks Per Game (BPG)", avg1["bpg"], avg2["bpg"], "bpg"),
+                        ("3-Pointers Made (3PM)", avg1["fg3m"], avg2["fg3m"], "fg3m"),
+                        ("Plus-Minus (+/-)", avg1["plus_minus"], avg2["plus_minus"], "plus_minus")
+                    ]
+
+                    comp_table_data = []
+                    for name, val_a, val_b, key in stat_rows:
+                        badge_a, badge_b = make_delta(key, val_a, val_b)
+                        comp_table_data.append({
+                            "Metric": name,
+                            p1["full_name"]: f"{val_a} {badge_a}".strip(),
+                            p2["full_name"]: f"{val_b} {badge_b}".strip()
+                        })
+
+                    st.dataframe(pd.DataFrame(comp_table_data), use_container_width=True)
+
+                    # Advanced Shooting Splits
+                    st.subheader("🎯 Advanced Shooting & Efficiency (TS% & eFG%)")
+                    s1 = p1["shooting_splits"]
+                    s2 = p2["shooting_splits"]
+
+                    c_ts1, c_ts2 = st.columns(2)
+                    with c_ts1:
+                        st.markdown(f"#### {p1['full_name']}")
+                        st.metric("True Shooting % (TS%)", f"{s1['ts_pct']}%")
+                        st.metric("Effective FG% (eFG%)", f"{s1['efg_pct']}%")
+                        st.caption(f"Shooting Splits: `{s1['fg_pct']}% FG` | `{s1['fg3_pct']}% 3P` | `{s1['ft_pct']}% FT`")
+
+                    with c_ts2:
+                        st.markdown(f"#### {p2['full_name']}")
+                        st.metric("True Shooting % (TS%)", f"{s2['ts_pct']}%")
+                        st.metric("Effective FG% (eFG%)", f"{s2['efg_pct']}%")
+                        st.caption(f"Shooting Splits: `{s2['fg_pct']}% FG` | `{s2['fg3_pct']}% 3P` | `{s2['ft_pct']}% FT`")
+
+                else:
+                    st.error(f"Failed to fetch comparison: {cmp_res.text}")
+            except Exception as e:
+                st.error(f"Comparison request failed: {e}")
+
+# ==================================
+# View 4: Leaderboards
 # ==================================
 
 elif page == "Leaderboards":
@@ -331,7 +472,7 @@ elif page == "Leaderboards":
         st.error(f"Failed to fetch leaderboard data: {e}")
 
 # ==================================
-# View 4: Player Stats & Analytics
+# View 5: Player Stats & Analytics
 # ==================================
 
 elif page == "Player Stats & Analytics":
@@ -380,7 +521,6 @@ elif page == "Player Stats & Analytics":
                 with m6:
                     st.metric("BPG", stats.get("avg_blk", 0.0))
 
-                # Radar chart visualization of stats
                 radar_data = pd.DataFrame(dict(
                     metric=['Points', 'Rebounds', 'Assists', 'Steals', 'Blocks'],
                     value=[stats.get("avg_pts", 0.0), stats.get("avg_reb", 0.0), stats.get("avg_ast", 0.0),
@@ -394,7 +534,7 @@ elif page == "Player Stats & Analytics":
             st.error(f"Failed to fetch player statistics: {e}")
 
 # ==================================
-# View 5: Player Search
+# View 6: Player Search
 # ==================================
 
 elif page == "Player Search":
@@ -420,7 +560,7 @@ elif page == "Player Search":
             st.error(f"Search request failed: {e}")
 
 # ==================================
-# View 6: Teams Directory
+# View 7: Teams Directory
 # ==================================
 
 elif page == "Teams":
@@ -436,7 +576,7 @@ elif page == "Teams":
         st.error(f"Failed to fetch teams: {e}")
 
 # ==================================
-# View 7: Team Analytics
+# View 8: Team Analytics
 # ==================================
 
 elif page == "Team Analytics":

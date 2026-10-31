@@ -109,3 +109,4 @@ def predict_game_matchup(home_team_id: int, away_team_id: int, db: Session) -> D
             f"Expected game pace points total: {total_ou} PTS"
         ]
     }
+

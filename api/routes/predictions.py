@@ -37,3 +37,4 @@ def predict_matchup(
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
+

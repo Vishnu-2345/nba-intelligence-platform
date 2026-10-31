@@ -144,3 +144,4 @@ def build_player_prop_prediction(player_id: int, db: Session) -> Dict[str, Any]:
         },
         "history": chart_series
     }
+

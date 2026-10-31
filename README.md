@@ -1,6 +1,6 @@
 # 🏀 NBA Intelligence Platform
 
-An end-to-end analytics, machine learning, and sports intelligence platform delivering automated data ingestion, relational box-score modeling, predictive ML modeling (player props & game outcomes), high-throughput REST APIs, and an interactive data visualization dashboard.
+An end-to-end analytics, machine learning, and sports intelligence platform delivering automated data ingestion, relational box-score modeling, predictive ML modeling (player props & game outcomes), dual-player head-to-head comparisons, high-throughput REST APIs, and an interactive data visualization dashboard.
 
 ---
 
@@ -25,6 +25,9 @@ An end-to-end analytics, machine learning, and sports intelligence platform deli
 - **Machine Learning & Predictive Analytics (`ml/`)**:
   - **Player Prop Forecaster**: Ensembles Exponential Moving Averages (EMA), season momentum, and regression models to project next-game Points, Rebounds, Assists, and 3-Pointers Made with 80% confidence intervals and Vegas Over/Under lines.
   - **Game Matchup Simulator**: Predicts win probabilities, projected scores, point spreads, and total over/under lines using offensive ratings, defensive efficiencies, and home-court advantage.
+- **Player Head-to-Head Comparison Suite**:
+  - Dual player side-by-side comparison across counting averages, category winners, and advanced shooting metrics (True Shooting % $TS\%$, Effective Field Goal % $eFG\%$).
+  - Dual-layer overlapping radar charts contrasting skill profiles in Streamlit.
 - **Automated Data Ingestion**:
   - Bulk ingestion of all 30 NBA franchises and 5,100+ active/historical players.
   - Multi-stat box score ingestion (PTS, REB, AST, STL, BLK, TOV, shooting percentages, and +/-).
@@ -39,6 +42,7 @@ An end-to-end analytics, machine learning, and sports intelligence platform deli
 - **Interactive Streamlit Dashboard**:
   - **AI Predictions & Props Tab**: Player prop lines, over/under gauges, and historical trajectory vs. projected line charts.
   - **Matchup Simulator Tab**: Dynamic win probability split bars and Vegas lines.
+  - **Head-to-Head Comparison View**: Dual profile cards, overlapping radar charts, and efficiency metrics.
   - **Stat Leaderboards**: Multi-category leaderboards (Scoring, Playmaking, Rebounding) with Plotly charts.
   - **Player Analytics**: Radar profile charts, official NBA headshots, and stat breakdowns.
   - **Team Directory & Analytics**: Franchise rosters and player distributions.
@@ -110,6 +114,7 @@ Open [http://localhost:8501](http://localhost:8501) in your browser.
 | `GET` | `/health` | Health check endpoint |
 | `GET` | `/predict/player/{player_id}` | **ML**: Next-game player prop forecasts (PTS, REB, AST, 3PM, O/U) |
 | `GET` | `/predict/matchup` | **ML**: Game matchup simulator (win prob, spread, projected score) |
+| `GET` | `/compare` | Head-to-head comparison between two players with TS% & eFG% |
 | `GET` | `/summary` | System statistics (teams, players, game logs) |
 | `GET` | `/players` | Paginated player listing (`skip`, `limit`, `is_active`) |
 | `GET` | `/player/{player_id}` | Player details, team affiliation, and headshot URL |
@@ -128,5 +133,6 @@ Open [http://localhost:8501](http://localhost:8501) in your browser.
 ## 🔮 Roadmap
 
 - [x] **Machine Learning Engine (`ml/`)**: Player prop forecasting and game matchup simulation.
+- [x] **Player Head-to-Head Comparison**: Dual radar charts, category leaders, and shooting splits.
 - [ ] **Nightly Automated Ingestion**: APScheduler background daemon for daily box-score updates.
 - [ ] **Docker Orchestration**: Complete `docker-compose` bundle running PostgreSQL, Redis, FastAPI, and Streamlit.

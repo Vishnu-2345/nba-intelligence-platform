@@ -10,6 +10,7 @@ from api.routes.teams import router as teams_router
 from api.routes.team_analytics import router as team_analytics_router
 from api.routes.search import router as search_router
 from api.routes.predictions import router as predictions_router
+from api.routes.comparison import router as comparison_router
 
 app = FastAPI(
     title="NBA Intelligence Platform",
@@ -36,6 +37,7 @@ app.include_router(teams_router, tags=["Teams"])
 app.include_router(team_analytics_router, tags=["Team Analytics"])
 app.include_router(search_router, tags=["Search"])
 app.include_router(predictions_router, tags=["Machine Learning & Predictions"])
+app.include_router(comparison_router, tags=["Head-to-Head Comparison"])
 
 
 @app.get("/", tags=["General"])
