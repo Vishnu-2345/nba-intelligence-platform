@@ -282,3 +282,4 @@ export default function HeadToHead({ initialP1, initialP2 }) {
     </div>
   );
 }
+

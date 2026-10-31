@@ -1,4 +1,5 @@
 from nba_api.stats.static import teams, players
+from nba_api.stats.endpoints import commonallplayers
 
 from db.database import SessionLocal
 from db.models import Team, Player
@@ -63,6 +64,35 @@ def ingest_static_data():
         print(f"Inserted {len(new_players)} new players successfully!")
     else:
         print("All players already exist in the database.")
+
+    # =====================
+    # Link Active Rosters to Franchises
+    # =====================
+    print("Fetching active season rosters via CommonAllPlayers...")
+    try:
+        cap = commonallplayers.CommonAllPlayers(is_only_current_season=1, league_id="00")
+        df = cap.get_data_frames()[0]
+        team_id_set = {t[0] for t in db.query(Team.team_id).all()}
+        updated = 0
+
+        for _, row in df.iterrows():
+            pid = int(row["PERSON_ID"])
+            raw_tid = row.get("TEAM_ID")
+            tid = int(raw_tid) if raw_tid and int(raw_tid) in team_id_set else None
+            
+            p = db.query(Player).filter(Player.player_id == pid).first()
+            if p:
+                p.team_id = tid
+                p.is_active = True
+                updated += 1
+            elif tid:
+                db.add(Player(player_id=pid, full_name=row["DISPLAY_FIRST_LAST"], team_id=tid, is_active=True))
+                updated += 1
+
+        db.commit()
+        print(f"Successfully linked {updated} active players to their NBA franchise rosters.")
+    except Exception as e:
+        print(f"Warning: Could not link active rosters: {e}")
 
     db.close()
 

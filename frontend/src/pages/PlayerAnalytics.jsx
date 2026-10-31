@@ -232,3 +232,4 @@ export default function PlayerAnalytics({ selectedPlayerId, onSelectPlayer, onNa
     </div>
   );
 }
+

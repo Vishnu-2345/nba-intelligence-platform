@@ -180,3 +180,4 @@ export default function TeamsDirectory({ onSelectPlayer }) {
     </div>
   );
 }
+
