@@ -1,6 +1,6 @@
 # 🏀 NBA Intelligence Platform
 
-An end-to-end analytics and sports intelligence platform delivering automated data ingestion, relational box-score modeling, high-throughput REST APIs, and an interactive data visualization dashboard.
+An end-to-end analytics, machine learning, and sports intelligence platform delivering automated data ingestion, relational box-score modeling, predictive ML modeling (player props & game outcomes), high-throughput REST APIs, and an interactive data visualization dashboard.
 
 ---
 
@@ -13,15 +13,18 @@ An end-to-end analytics and sports intelligence platform delivering automated da
                  ↓
    [ PostgreSQL Analytics Store ]
                  ↓
-     [ FastAPI Backend (:8000) ]
-                 ↓
-   [ Streamlit Intelligence Dashboard (:8501) ]
+[ Machine Learning Engine (ml/) ] ←→ [ FastAPI Backend (:8000) ]
+                                              ↓
+                        [ Streamlit Intelligence Dashboard (:8501) ]
 ```
 
 ---
 
 ## ⚡ Key Features
 
+- **Machine Learning & Predictive Analytics (`ml/`)**:
+  - **Player Prop Forecaster**: Ensembles Exponential Moving Averages (EMA), season momentum, and regression models to project next-game Points, Rebounds, Assists, and 3-Pointers Made with 80% confidence intervals and Vegas Over/Under lines.
+  - **Game Matchup Simulator**: Predicts win probabilities, projected scores, point spreads, and total over/under lines using offensive ratings, defensive efficiencies, and home-court advantage.
 - **Automated Data Ingestion**:
   - Bulk ingestion of all 30 NBA franchises and 5,100+ active/historical players.
   - Multi-stat box score ingestion (PTS, REB, AST, STL, BLK, TOV, shooting percentages, and +/-).
@@ -34,9 +37,11 @@ An end-to-end analytics and sports intelligence platform delivering automated da
   - Comprehensive statistical leaderboards with configurable minimum game qualifiers.
   - Instant substring search across 5,000+ players.
 - **Interactive Streamlit Dashboard**:
-  - Multi-category leaderboards (Scoring, Playmaking, Rebounding) with Plotly charts.
-  - Player analytics view with radar profile charts and headshot integration.
-  - Team analytics and franchise roster breakdowns.
+  - **AI Predictions & Props Tab**: Player prop lines, over/under gauges, and historical trajectory vs. projected line charts.
+  - **Matchup Simulator Tab**: Dynamic win probability split bars and Vegas lines.
+  - **Stat Leaderboards**: Multi-category leaderboards (Scoring, Playmaking, Rebounding) with Plotly charts.
+  - **Player Analytics**: Radar profile charts, official NBA headshots, and stat breakdowns.
+  - **Team Directory & Analytics**: Franchise rosters and player distributions.
 
 ---
 
@@ -103,6 +108,8 @@ Open [http://localhost:8501](http://localhost:8501) in your browser.
 | :--- | :--- | :--- |
 | `GET` | `/` | API status and root metadata |
 | `GET` | `/health` | Health check endpoint |
+| `GET` | `/predict/player/{player_id}` | **ML**: Next-game player prop forecasts (PTS, REB, AST, 3PM, O/U) |
+| `GET` | `/predict/matchup` | **ML**: Game matchup simulator (win prob, spread, projected score) |
 | `GET` | `/summary` | System statistics (teams, players, game logs) |
 | `GET` | `/players` | Paginated player listing (`skip`, `limit`, `is_active`) |
 | `GET` | `/player/{player_id}` | Player details, team affiliation, and headshot URL |
@@ -120,7 +127,6 @@ Open [http://localhost:8501](http://localhost:8501) in your browser.
 
 ## 🔮 Roadmap
 
-- [ ] **ML Prediction Models (`ml/`)**: XGBoost game winner and player performance forecasting.
+- [x] **Machine Learning Engine (`ml/`)**: Player prop forecasting and game matchup simulation.
 - [ ] **Nightly Automated Ingestion**: APScheduler background daemon for daily box-score updates.
 - [ ] **Docker Orchestration**: Complete `docker-compose` bundle running PostgreSQL, Redis, FastAPI, and Streamlit.
-

@@ -3,6 +3,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 # ==================================
 # Page Configuration & Styling
@@ -26,6 +27,7 @@ page = st.sidebar.radio(
     "Navigation",
     [
         "Dashboard",
+        "🔮 AI Predictions & Props",
         "Leaderboards",
         "Player Stats & Analytics",
         "Player Search",
@@ -34,13 +36,27 @@ page = st.sidebar.radio(
     ]
 )
 
+# Featured preset players for quick selection
+PRESET_PLAYERS = {
+    "LeBron James": 2544,
+    "Stephen Curry": 201939,
+    "Nikola Jokić": 203999,
+    "Giannis Antetokounmpo": 203507,
+    "Jayson Tatum": 1628369,
+    "Luka Dončić": 1629029,
+    "Kevin Durant": 201142,
+    "Joel Embiid": 203954,
+    "Shai Gilgeous-Alexander": 1628983,
+    "Paul George": 202331
+}
+
 # ==================================
 # View 1: Overview Dashboard
 # ==================================
 
 if page == "Dashboard":
     st.title("🏀 NBA Intelligence Platform")
-    st.markdown("Real-time data ingestion, box-score analytics, and intelligence platform.")
+    st.markdown("Real-time data ingestion, box-score analytics, and machine learning intelligence platform.")
 
     try:
         response = requests.get(f"{API_URL}/summary", timeout=5)
@@ -72,15 +88,203 @@ if page == "Dashboard":
                  ↓
    [ PostgreSQL Analytics Store ]
                  ↓
-     [ FastAPI Backend (:8000) ]
-                 ↓
-   [ Streamlit Intelligence Dashboard (:8501) ]
+[ Machine Learning Engine (ml/) ] ←→ [ FastAPI Backend (:8000) ]
+                                              ↓
+                        [ Streamlit Intelligence Dashboard (:8501) ]
         """,
         language="text"
     )
 
 # ==================================
-# View 2: Leaderboards
+# View 2: AI Predictions & Props (ML)
+# ==================================
+
+elif page == "🔮 AI Predictions & Props":
+    st.title("🔮 Machine Learning Predictions & Props")
+    st.markdown("Predict next-game player prop lines and simulate franchise matchup outcomes using machine learning.")
+
+    ml_tab1, ml_tab2 = st.tabs(["🎯 Player Prop Forecaster", "⚔️ Game Matchup Simulator"])
+
+    # Tab 1: Player Prop Forecaster
+    with ml_tab1:
+        st.subheader("Next-Game Player Prop Forecaster")
+        st.caption("Combines rolling exponential moving averages, season momentum, and regression models to forecast next-game lines.")
+
+        p_mode = st.radio("Player Selection", ["Featured Stars", "Custom Player ID"], horizontal=True, key="ml_player_mode")
+        if p_mode == "Featured Stars":
+            ml_player_name = st.selectbox("Select Star Player", list(PRESET_PLAYERS.keys()), key="ml_p_name")
+            ml_player_id = PRESET_PLAYERS[ml_player_name]
+        else:
+            ml_player_id = st.number_input("Enter Player ID", min_value=1, value=2544, step=1, key="ml_p_id")
+
+        if st.button("Generate AI Projections", type="primary", key="btn_ml_player"):
+            try:
+                res = requests.get(f"{API_URL}/predict/player/{ml_player_id}", timeout=8)
+                if res.status_code == 200:
+                    data = res.json()
+                    if not data.get("has_data", False):
+                        st.info(data.get("message", "No games logged for this player yet."))
+                    else:
+                        st.success(f"Generated AI Projections for **{data['player']}** (based on {data['games_analyzed']} games analyzed):")
+
+                        proj = data["projections"]
+                        c1, c2, c3, c4 = st.columns(4)
+
+                        metrics_cards = [
+                            (c1, "Points (PTS)", proj["points"]),
+                            (c2, "Rebounds (REB)", proj["rebounds"]),
+                            (c3, "Assists (AST)", proj["assists"]),
+                            (c4, "3-Pointers Made", proj["three_pointers"])
+                        ]
+
+                        for col, label, metric in metrics_cards:
+                            with col:
+                                st.metric(
+                                    label=label,
+                                    value=f"{metric['predicted_value']} Proj",
+                                    delta=f"O/U Line: {metric['over_under_line']}"
+                                )
+                                st.caption(
+                                    f"Over Likelihood: **{int(metric['over_probability'] * 100)}%**  \n"
+                                    f"80% CI: `[{metric['confidence_interval'][0]} - {metric['confidence_interval'][1]}]`"
+                                )
+
+                        # Historical trendline vs AI Projected Line
+                        st.markdown("---")
+                        st.subheader(f"📈 {data['player']} - Historical Performance vs. AI Projected Line")
+                        hist = data.get("history", {})
+                        if hist and "dates" in hist:
+                            df_hist = pd.DataFrame({
+                                "Game": hist["dates"],
+                                "Points": hist["pts"],
+                                "Rebounds": hist["reb"],
+                                "Assists": hist["ast"]
+                            })
+
+                            stat_to_plot = st.selectbox("Select Stat to Chart", ["Points", "Rebounds", "Assists"])
+                            proj_line = proj["points"]["over_under_line"] if stat_to_plot == "Points" else (
+                                proj["rebounds"]["over_under_line"] if stat_to_plot == "Rebounds" else proj["assists"]["over_under_line"]
+                            )
+
+                            fig_trend = go.Figure()
+                            fig_trend.add_trace(go.Scatter(
+                                x=df_hist["Game"],
+                                y=df_hist[stat_to_plot],
+                                mode='lines+markers',
+                                name=f"Actual {stat_to_plot}",
+                                line=dict(color='#1f77b4', width=3)
+                            ))
+                            fig_trend.add_hline(
+                                y=proj_line,
+                                line_dash="dash",
+                                line_color="red",
+                                annotation_text=f"AI O/U Line: {proj_line}",
+                                annotation_position="top left"
+                            )
+                            fig_trend.update_layout(
+                                title=f"{stat_to_plot} Trajectory with Projected Line",
+                                xaxis_title="Recent Games",
+                                yaxis_title=stat_to_plot
+                            )
+                            st.plotly_chart(fig_trend, use_container_width=True)
+
+                else:
+                    st.error(f"API Error: {res.text}")
+            except Exception as e:
+                st.error(f"Failed to generate prediction: {e}")
+
+    # Tab 2: Game Matchup Simulator
+    with ml_tab2:
+        st.subheader("⚔️ Game Matchup & Win Probability Simulator")
+        st.caption("Simulates game pace, offensive efficiencies, and home court advantage to output projected scores and spread.")
+
+        # Fetch teams list for dropdowns
+        try:
+            teams_res = requests.get(f"{API_URL}/teams", timeout=5)
+            teams_data = teams_res.json() if teams_res.status_code == 200 else []
+            team_dict = {t["name"]: t["team_id"] for t in teams_data}
+        except Exception:
+            team_dict = {}
+
+        if not team_dict:
+            team_dict = {
+                "Los Angeles Lakers": 1610612747,
+                "Golden State Warriors": 1610612744,
+                "Boston Celtics": 1610612738,
+                "Denver Nuggets": 1610612743,
+                "Milwaukee Bucks": 1610612749,
+                "Dallas Mavericks": 1610612742
+            }
+
+        col_home, col_away = st.columns(2)
+        with col_home:
+            home_choice = st.selectbox("🏠 Home Team", list(team_dict.keys()), index=0)
+            home_id = team_dict[home_choice]
+        with col_away:
+            # Default to second team
+            away_choice = st.selectbox("✈️ Away Team", list(team_dict.keys()), index=min(1, len(team_dict)-1))
+            away_id = team_dict[away_choice]
+
+        if st.button("Run Matchup Simulation", type="primary", key="btn_ml_matchup"):
+            if home_id == away_id:
+                st.warning("Please choose two different teams.")
+            else:
+                try:
+                    sim_res = requests.get(f"{API_URL}/predict/matchup?home_team_id={home_id}&away_team_id={away_id}", timeout=6)
+                    if sim_res.status_code == 200:
+                        sim = sim_res.json()
+                        home_info = sim["home_team"]
+                        away_info = sim["away_team"]
+                        odds = sim["odds_and_lines"]
+
+                        st.markdown("### Matchup Outcome Projection")
+
+                        col_h_card, col_odds, col_a_card = st.columns([2, 2, 2])
+                        with col_h_card:
+                            st.subheader(f"🏠 {home_info['name']}")
+                            st.metric("Win Probability", f"{home_info['win_probability']}%")
+                            st.metric("Projected Score", home_info['projected_score'])
+
+                        with col_odds:
+                            st.subheader("📊 Vegas Lines")
+                            st.info(f"**Favorite**: {odds['favored_team']}")
+                            st.markdown(f"**Spread**: `{odds['projected_spread']}`")
+                            st.markdown(f"**Total O/U**: `{odds['total_over_under']} PTS`")
+
+                        with col_a_card:
+                            st.subheader(f"✈️ {away_info['name']}")
+                            st.metric("Win Probability", f"{away_info['win_probability']}%")
+                            st.metric("Projected Score", away_info['projected_score'])
+
+                        # Win probability split bar
+                        st.markdown("#### Win Probability Split")
+                        prob_df = pd.DataFrame({
+                            "Team": [home_info['abbreviation'], away_info['abbreviation']],
+                            "Win %": [home_info['win_probability'], away_info['win_probability']]
+                        })
+                        fig_prob = px.bar(
+                            prob_df,
+                            x="Win %",
+                            y="Team",
+                            orientation='h',
+                            text="Win %",
+                            color="Team",
+                            color_discrete_sequence=['#1f77b4', '#ff7f0e']
+                        )
+                        fig_prob.update_layout(height=220)
+                        st.plotly_chart(fig_prob, use_container_width=True)
+
+                        st.markdown("#### Key Matchup Insights")
+                        for factor in sim.get("key_factors", []):
+                            st.write(f"• {factor}")
+
+                    else:
+                        st.error(f"Simulation failed: {sim_res.text}")
+                except Exception as e:
+                    st.error(f"Failed to run matchup simulation: {e}")
+
+# ==================================
+# View 3: Leaderboards
 # ==================================
 
 elif page == "Leaderboards":
@@ -127,30 +331,17 @@ elif page == "Leaderboards":
         st.error(f"Failed to fetch leaderboard data: {e}")
 
 # ==================================
-# View 3: Player Stats & Analytics
+# View 4: Player Stats & Analytics
 # ==================================
 
 elif page == "Player Stats & Analytics":
     st.title("📊 Player Statistics & Profile")
 
-    # Quick selection presets for popular stars + manual search
-    preset_players = {
-        "LeBron James": 2544,
-        "Stephen Curry": 201939,
-        "Nikola Jokić": 203999,
-        "Giannis Antetokounmpo": 203507,
-        "Jayson Tatum": 1628369,
-        "Luka Dončić": 1629029,
-        "Kevin Durant": 201142,
-        "Joel Embiid": 203954,
-        "Shai Gilgeous-Alexander": 1628983
-    }
-
     selected_mode = st.radio("Player Lookup Mode", ["Featured Stars", "Custom Player ID / Search"], horizontal=True)
 
     if selected_mode == "Featured Stars":
-        chosen_name = st.selectbox("Select Player", list(preset_players.keys()))
-        player_id = preset_players[chosen_name]
+        chosen_name = st.selectbox("Select Player", list(PRESET_PLAYERS.keys()))
+        player_id = PRESET_PLAYERS[chosen_name]
     else:
         player_id = st.number_input("Enter Player ID", min_value=1, value=2544, step=1)
 
@@ -193,7 +384,7 @@ elif page == "Player Stats & Analytics":
                 radar_data = pd.DataFrame(dict(
                     metric=['Points', 'Rebounds', 'Assists', 'Steals', 'Blocks'],
                     value=[stats.get("avg_pts", 0.0), stats.get("avg_reb", 0.0), stats.get("avg_ast", 0.0),
-                           stats.get("avg_stl", 0.0) * 5, stats.get("avg_blk", 0.0) * 5]  # scaled for visualization
+                           stats.get("avg_stl", 0.0) * 5, stats.get("avg_blk", 0.0) * 5]
                 ))
                 fig_radar = px.line_polar(radar_data, r='value', theta='metric', line_close=True,
                                           title=f"{stats.get('player')} - Stat Profile")
@@ -203,7 +394,7 @@ elif page == "Player Stats & Analytics":
             st.error(f"Failed to fetch player statistics: {e}")
 
 # ==================================
-# View 4: Player Search
+# View 5: Player Search
 # ==================================
 
 elif page == "Player Search":
@@ -229,7 +420,7 @@ elif page == "Player Search":
             st.error(f"Search request failed: {e}")
 
 # ==================================
-# View 5: Teams Directory
+# View 6: Teams Directory
 # ==================================
 
 elif page == "Teams":
@@ -245,7 +436,7 @@ elif page == "Teams":
         st.error(f"Failed to fetch teams: {e}")
 
 # ==================================
-# View 6: Team Analytics
+# View 7: Team Analytics
 # ==================================
 
 elif page == "Team Analytics":
