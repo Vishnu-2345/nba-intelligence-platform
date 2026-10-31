@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api, PRESET_PLAYERS } from '../services/api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Activity, Users, Shield, Database, TrendingUp, Search, ArrowRight } from 'lucide-react';
+import { Activity, Users, Shield, Database, TrendingUp, Search, ArrowRight, Target } from 'lucide-react';
 
 export default function Dashboard({ onSelectPlayer, onNavigate }) {
   const [summary, setSummary] = useState(null);
@@ -54,6 +54,13 @@ export default function Dashboard({ onSelectPlayer, onNavigate }) {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <button
+            onClick={() => onNavigate('edge-finder')}
+            className="btn btn-secondary"
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderColor: 'rgba(16, 185, 129, 0.4)', color: '#10b981' }}
+          >
+            <Target size={16} color="#10b981" /> +EV Prop Finder
+          </button>
           <button onClick={() => onNavigate('predictions')} className="btn-primary">
             Run AI Matchup <ArrowRight size={16} />
           </button>

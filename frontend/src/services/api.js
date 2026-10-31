@@ -46,6 +46,18 @@ export const api = {
   // Head to Head
   comparePlayers: (p1Id, p2Id) =>
     fetch(`${API_BASE}/compare?player1_id=${p1Id}&player2_id=${p2Id}`).then(handleResponse),
+
+  // Prop Edge Finder & Value Bets
+  getEdgeFinderProps: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.market) q.append('market', params.market);
+    if (params.pick) q.append('pick', params.pick);
+    if (params.grade) q.append('grade', params.grade);
+    if (params.min_edge) q.append('min_edge', params.min_edge);
+    if (params.search) q.append('search', params.search);
+    if (params.sort_by) q.append('sort_by', params.sort_by);
+    return fetch(`${API_BASE}/props/edge-finder?${q.toString()}`).then(handleResponse);
+  },
 };
 
 export const PRESET_PLAYERS = [

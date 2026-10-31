@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
+  Target,
   Sparkles,
   Swords,
   Trophy,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import Dashboard from './pages/Dashboard';
+import PropEdgeFinder from './pages/PropEdgeFinder';
 import Predictions from './pages/Predictions';
 import HeadToHead from './pages/HeadToHead';
 import Leaderboards from './pages/Leaderboards';
@@ -44,6 +46,7 @@ export default function App() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'edge-finder', label: 'Prop Edge Finder', icon: Target, badge: '+EV' },
     { id: 'predictions', label: 'AI Predictions & Props', icon: Sparkles, badge: 'ML' },
     { id: 'head-to-head', label: 'Head-to-Head', icon: Swords },
     { id: 'leaderboards', label: 'Stat Leaderboards', icon: Trophy },
@@ -147,6 +150,12 @@ export default function App() {
             <Dashboard
               onSelectPlayer={handleSelectPlayer}
               onNavigate={setCurrentPage}
+            />
+          )}
+
+          {currentPage === 'edge-finder' && (
+            <PropEdgeFinder
+              onSelectPlayer={handleSelectPlayer}
             />
           )}
 
