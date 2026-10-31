@@ -3,65 +3,69 @@ from nba_api.stats.static import teams, players
 from db.database import SessionLocal
 from db.models import Team, Player
 
-db = SessionLocal()
 
-# =====================
-# Teams
-# =====================
+def ingest_static_data():
+    db = SessionLocal()
 
-nba_teams = teams.get_teams()
+    # =====================
+    # Teams
+    # =====================
+    nba_teams = teams.get_teams()
+    print(f"Found {len(nba_teams)} NBA teams in static dataset.")
 
-print(f"Found {len(nba_teams)} teams")
+    existing_team_ids = {t[0] for t in db.query(Team.team_id).all()}
 
-for team in nba_teams:
+    new_teams = []
+    for team in nba_teams:
+        if team["id"] not in existing_team_ids:
+            new_teams.append(
+                Team(
+                    team_id=team["id"],
+                    name=team["full_name"],
+                    abbreviation=team["abbreviation"],
+                    city=team.get("city"),
+                    conference=team.get("state")  # state / location info
+                )
+            )
 
-    existing = (
-        db.query(Team)
-        .filter(Team.team_id == team["id"])
-        .first()
-    )
+    if new_teams:
+        db.add_all(new_teams)
+        db.commit()
+        print(f"Inserted {len(new_teams)} new teams successfully!")
+    else:
+        print("All teams already exist in the database.")
 
-    if not existing:
+    # =====================
+    # Players
+    # =====================
+    nba_players = players.get_players()
+    print(f"Found {len(nba_players)} players in static dataset.")
 
-        db_team = Team(
-            team_id=team["id"],
-            name=team["full_name"],
-            abbreviation=team["abbreviation"]
-        )
+    existing_player_ids = {p[0] for p in db.query(Player.player_id).all()}
 
-        db.add(db_team)
+    new_players = []
+    for p in nba_players:
+        if p["id"] not in existing_player_ids:
+            new_players.append(
+                Player(
+                    player_id=p["id"],
+                    full_name=p["full_name"],
+                    is_active=bool(p.get("is_active", True))
+                )
+            )
 
-db.commit()
+    if new_players:
+        # Bulk insert in batches of 500 for maximum performance
+        batch_size = 500
+        for i in range(0, len(new_players), batch_size):
+            db.bulk_save_objects(new_players[i:i + batch_size])
+            db.commit()
+        print(f"Inserted {len(new_players)} new players successfully!")
+    else:
+        print("All players already exist in the database.")
 
-print("Teams inserted successfully!")
+    db.close()
 
-# =====================
-# Players
-# =====================
 
-nba_players = players.get_players()
-
-print(f"Found {len(nba_players)} players")
-
-for player in nba_players:
-
-    existing = (
-        db.query(Player)
-        .filter(Player.player_id == player["id"])
-        .first()
-    )
-
-    if not existing:
-
-        db_player = Player(
-            player_id=player["id"],
-            full_name=player["full_name"]
-        )
-
-        db.add(db_player)
-
-db.commit()
-
-print("Players inserted successfully!")
-
-db.close()
+if __name__ == "__main__":
+    ingest_static_data()

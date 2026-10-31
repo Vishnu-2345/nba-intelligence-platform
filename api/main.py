@@ -1,24 +1,49 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes.players import router as player_router
-
 from api.routes.player_details import router as player_detail_router
-
 from api.routes.leaderboard import router as leaderboard_router
-
 from api.routes.player_stats import router as player_stats_router
-
+from api.routes.summary import router as summary_router
+from api.routes.team_analytics import router as team_analytics_router
+from api.routes.search import router as search_router
 
 app = FastAPI(
-    title="NBA Intelligence Platform"
+    title="NBA Intelligence Platform",
+    description="Production-grade API for NBA stats, analytics, and intelligence",
+    version="1.0.0"
 )
 
-app.include_router(player_router)
-app.include_router(player_detail_router)
-app.include_router(leaderboard_router)
-app.include_router(player_stats_router)
+# Enable CORS for local dashboards and external frontend apps
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-@app.get("/")
+# Register route modules
+app.include_router(player_router, tags=["Players"])
+app.include_router(player_detail_router, tags=["Players"])
+app.include_router(leaderboard_router, tags=["Leaderboards"])
+app.include_router(player_stats_router, tags=["Player Stats"])
+app.include_router(summary_router, tags=["System Summary"])
+app.include_router(team_analytics_router, tags=["Team Analytics"])
+app.include_router(search_router, tags=["Search"])
+
+
+@app.get("/", tags=["General"])
 def home():
-    return {"message": "NBA Intelligence Platform API"}
+    return {
+        "status": "online",
+        "service": "NBA Intelligence Platform API",
+        "version": "1.0.0",
+        "docs_url": "/docs"
+    }
 
+
+@app.get("/health", tags=["General"])
+def health_check():
+    return {"status": "healthy"}
