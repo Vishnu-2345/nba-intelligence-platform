@@ -5,13 +5,14 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 load_dotenv()
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/nba")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./nba.db")
 
-# pool_pre_ping checks connection validity before checkout to prevent stale disconnects
+connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+
 engine = create_engine(
     DATABASE_URL,
-    pool_pre_ping=True,
-    pool_recycle=3600
+    connect_args=connect_args,
+    pool_pre_ping=True
 )
 
 SessionLocal = sessionmaker(

@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd
 from typing import Dict, Any, List
 from sqlalchemy.orm import Session
-from sklearn.linear_model import Ridge
-from sklearn.ensemble import GradientBoostingRegressor
 
 from db.models import Player, PlayerGameStat
 
@@ -52,7 +50,6 @@ def build_player_prop_prediction(player_id: int, db: Session) -> Dict[str, Any]:
     df = pd.DataFrame(data)
     n_games = len(df)
 
-    # Dictionary to store predictions for key metrics
     targets = ["pts", "reb", "ast", "fg3m"]
     predictions = {}
     chart_series = {
@@ -62,6 +59,15 @@ def build_player_prop_prediction(player_id: int, db: Session) -> Dict[str, Any]:
         "ast": df["ast"].tolist()
     }
 
+    # Lazy-load scikit-learn only when running inference to keep startup instantaneous
+    Ridge = None
+    if n_games >= 5:
+        try:
+            from sklearn.linear_model import Ridge as SkRidge
+            Ridge = SkRidge
+        except Exception:
+            Ridge = None
+
     for target in targets:
         series = df[target].values
 
@@ -69,41 +75,35 @@ def build_player_prop_prediction(player_id: int, db: Session) -> Dict[str, Any]:
             pred = float(series[0])
             std = max(float(series[0] * 0.25), 1.0)
         elif n_games < 4:
-            # Weighted average: recent games receive higher weight
             weights = np.linspace(0.8, 1.2, n_games)
             pred = float(np.average(series, weights=weights))
             std = float(np.std(series, ddof=1)) if np.std(series) > 0 else max(pred * 0.2, 1.0)
         else:
-            # Advanced Feature Engineering for time-series / game logs
-            # 1. Rolling 3-game average
-            # 2. Exponential Moving Average (span=3)
-            # 3. Overall season average
-            # 4. Momentum trend (difference between 3-game EMA and season mean)
             ema_series = pd.Series(series).ewm(span=3, adjust=False).mean().values
-            season_mean = np.mean(series)
-            recent_ema = ema_series[-1]
-            rolling_3 = np.mean(series[-3:])
+            season_mean = float(np.mean(series))
+            recent_ema = float(ema_series[-1])
 
-            # Fit a GradientBoostingRegressor or Ridge with lagged features
-            X = []
-            y = []
-            for i in range(2, n_games):
-                feat = [
-                    series[i - 1],               # Last game
-                    series[i - 2],               # 2 games ago
-                    np.mean(series[:i]),         # Cumulative mean
-                    ema_series[i - 1]            # EMA up to previous game
-                ]
-                X.append(feat)
-                y.append(series[i])
+            if Ridge is not None and n_games >= 5:
+                X = []
+                y = []
+                for i in range(2, n_games):
+                    feat = [
+                        series[i - 1],
+                        series[i - 2],
+                        float(np.mean(series[:i])),
+                        float(ema_series[i - 1])
+                    ]
+                    X.append(feat)
+                    y.append(series[i])
 
-            if len(X) >= 3:
-                model = Ridge(alpha=1.0)
-                model.fit(X, y)
-                next_feat = [[series[-1], series[-2], season_mean, recent_ema]]
-                ml_pred = model.predict(next_feat)[0]
-                # Ensemble blend: 50% ML Model, 35% Recent EMA, 15% Season Mean
-                pred = float(0.50 * ml_pred + 0.35 * recent_ema + 0.15 * season_mean)
+                if len(X) >= 3:
+                    model = Ridge(alpha=1.0)
+                    model.fit(X, y)
+                    next_feat = [[series[-1], series[-2], season_mean, recent_ema]]
+                    ml_pred = float(model.predict(next_feat)[0])
+                    pred = float(0.50 * ml_pred + 0.35 * recent_ema + 0.15 * season_mean)
+                else:
+                    pred = float(0.70 * recent_ema + 0.30 * season_mean)
             else:
                 pred = float(0.70 * recent_ema + 0.30 * season_mean)
 
@@ -111,15 +111,11 @@ def build_player_prop_prediction(player_id: int, db: Session) -> Dict[str, Any]:
             std = float(np.std(series[-5:], ddof=1)) if len(series) >= 5 else float(np.std(series))
             std = max(std, 1.2)
 
-        # Compute Over/Under lines & Confidence Intervals
-        # Standard Vegas half-point line: floor(pred) + 0.5
         ou_line = round(pred) - 0.5 if pred < round(pred) else round(pred) + 0.5
-        confidence_low = max(0.0, round(pred - 1.28 * std, 1))   # 80% CI
+        confidence_low = max(0.0, round(pred - 1.28 * std, 1))
         confidence_high = round(pred + 1.28 * std, 1)
 
-        # Over probability approximation
         z_score = (ou_line - pred) / (std + 1e-6)
-        # Normal CDF approximation
         over_prob = round(float(1.0 / (1.0 + np.exp(-1.6 * (-z_score)))), 3)
 
         predictions[target] = {
@@ -144,4 +140,3 @@ def build_player_prop_prediction(player_id: int, db: Session) -> Dict[str, Any]:
         },
         "history": chart_series
     }
-
